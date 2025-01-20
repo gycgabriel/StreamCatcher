@@ -138,13 +138,17 @@ class TelegramBot:
             
 
         if usr_msg[0] == "mixcha":
-            res = subprocess.Popen(['mixtcha.bat', usr_msg[1:].encode()], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
-            stdout = res.stdout.read().decode("utf-8", 'ignore').strip()
-            stderr = res.stderr.read().decode("utf-8", 'ignore').strip()
-            if stdout:
-                return (stdout)
-            elif stderr:
-                return (stderr)
+            res = subprocess.Popen(['mixtcha.bat', usr_msg[1].encode()], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+            status = res.poll()
+
+            if status is None:
+                stdout_line = res.stdout.readline()
+                stderr_line = res.stderr.readline()
+
+            if stdout_line:
+                return stdout_line.strip()
+            elif stderr_line:
+                return stderr_line.strip()
             else:
                 return ''
 
