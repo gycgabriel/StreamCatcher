@@ -10,22 +10,27 @@ import pyperclip
 import subprocess
 import json
 
+MENU_FIRST = [[KeyboardButton("Mixcha")], [KeyboardButton("💡 More commands")]]
+MENU_MORE = [[KeyboardButton("⚠ Screen status")], [KeyboardButton("🔒 Lock screen")], [KeyboardButton("📸 Take screenshot")],
+            [KeyboardButton("✂ Paste clipboard")], [KeyboardButton("📄 List process")], [KeyboardButton("💤 Sleep")],
+            [KeyboardButton("💡 More more commands")]]
+
 
 class TelegramBot:
 
     def __init__(self):
         f = open('auth.json')
+        u = open('url.json')
         auth = json.load(f)
+        LINKS = json.load(u)
         self.TOKEN = auth["TOKEN"]
         self.CHAT_ID = auth["CHAT_ID"]
+        running_processes = {}
+        MENU_MIXCHA = [[KeyboardButton(i)] for i in LINKS.keys()]
+
 
     def start_command(self, update, context):
-        buttons = [[KeyboardButton("⚠ Screen status")], [KeyboardButton("🔒 Lock screen")], [KeyboardButton("📸 Take screenshot")],
-                   [KeyboardButton("✂ Paste clipboard")], [KeyboardButton(
-                       "📄 List process")], [KeyboardButton("💤 Sleep")],
-                   [KeyboardButton("💡 More commands")]]
-        context.bot.send_message(
-            chat_id=self.CHAT_ID, text="I will do what you command.", reply_markup=ReplyKeyboardMarkup(buttons))
+        context.bot.send_message(chat_id=self.CHAT_ID, text="Menu:", reply_markup=ReplyKeyboardMarkup(MENU_FIRST))
 
     def error(self, update, context):
         print(f"Update {update} caused error {context.error}")
@@ -41,6 +46,9 @@ class TelegramBot:
         usr_msg = input_text.split()
 
         if input_text == "more commands":
+            context.bot.send_message(chat_id=self.CHAT_ID, text="More:", reply_markup=ReplyKeyboardMarkup(MENU_MORE))
+
+        if input_text == "more more commands":
             return """url <link>: open a link on the browser\nkill <proc>: terminate process\ncmd <command>: execute shell command\ncd <dir>: change directory\ndownload <file>: download a file"""
 
         if input_text == 'screen status':
@@ -138,6 +146,9 @@ class TelegramBot:
             
 
         if usr_msg[0] == "mixcha":
+            context.bot.send_message(chat_id=self.CHAT_ID, text="Who?:", reply_markup=ReplyKeyboardMarkup(MENU_MIXCHA))
+            
+
             res = subprocess.Popen(['mixtcha.bat', usr_msg[1].encode()], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
             status = res.poll()
 
@@ -149,17 +160,6 @@ class TelegramBot:
                 return stdout_line.strip()
             elif stderr_line:
                 return stderr_line.strip()
-            else:
-                return ''
-
-        if usr_msg[0] == "twitcast":
-            res = subprocess.Popen(['twitcast.bat', usr_msg[1:].encode()], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
-            stdout = res.stdout.read().decode("utf-8", 'ignore').strip()
-            stderr = res.stderr.read().decode("utf-8", 'ignore').strip()
-            if stdout:
-                return (stdout)
-            elif stderr:
-                return (stderr)
             else:
                 return ''
 
