@@ -63,13 +63,13 @@ class TelegramBot:
                 self.authenticated_users.pop(username)  # Remove expired session
         return False
 
-    def request_authentication(self, update: Update):
+    async def request_authentication(self, update: Update):
         username = update.message.from_user.username
         if username not in self.whitelist:
-            update.message.reply_text("You are not whitelisted to use this bot.")
+            await update.message.reply_text("You are not whitelisted to use this bot.")
             return False
 
-        update.message.reply_text("Please enter the bot password to proceed.")
+        await update.message.reply_text("Please enter the bot password to proceed.")
         self.pending_auth[username] = True
         return False
 
@@ -98,7 +98,7 @@ class TelegramBot:
         username = update.message.from_user.username
 
         if not self.is_authenticated(username):
-            self.request_authentication(update)
+            await self.request_authentication(update)
             return
 
         # Create a list of buttons for each link
@@ -139,7 +139,7 @@ class TelegramBot:
         username = update.message.from_user.username
 
         if not self.is_authenticated(username):
-            self.request_authentication(update)
+            await self.request_authentication(update)
             return
 
         if not self.active_processes:
