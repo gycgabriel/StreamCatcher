@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import time
 
@@ -50,7 +51,7 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(CommandHandler("record", self.show_links))
         self.application.add_handler(CommandHandler("status", self.check_status))
-        self.application.add_handler(CallbackQueryHandler(self.record))
+        self.application.add_handler(CallbackQueryHandler(self.handle_callback))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_password))
 
     def is_authenticated(self, username):
@@ -103,37 +104,65 @@ class TelegramBot:
 
         # Create a list of buttons for each link
         buttons = [
-            [InlineKeyboardButton(name, callback_data=name)] for name in self.links.keys()
+            [InlineKeyboardButton(name, callback_data=f"record|{name}")] for name in self.links.keys()
         ]
         reply_markup = InlineKeyboardMarkup(buttons)
         await update.message.reply_text("Select a stream to record:", reply_markup=reply_markup)
 
-    async def record(self, update: Update, context: CallbackContext):
+    async def handle_callback(self, update: Update, context: CallbackContext):
         query = update.callback_query
         await query.answer()
 
-        name = query.data
+        data = query.data
+        action, name = data.split('|', 1)
+
+        if action == "record":
+            await self.handle_record(query, name)
+        elif action == "kill":
+            await self.handle_kill(query, name)
+
+    async def handle_record(self, query, name):
         url = self.links.get(name)
 
         if not url:
             await query.edit_message_text(f"No link found for {name}.")
             return
 
-        # Define the yt-dlp command
-        command = [
-            "yt-dlp",
-            url,
-            "--output",
-            f"{name}-%(timestamp)s.%(ext)s"
-        ]
+        if name in self.active_processes and self.active_processes[name].poll() is None:
+            await query.edit_message_text(f"Recording for {name} is already in progress.")
+            return
 
         try:
             # Run the command
-            process = subprocess.Popen(["a.bat", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(["mixtcha.bat", url], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             self.active_processes[name] = process
             await query.edit_message_text(f"Recording started for {name}. File will be saved.")
         except Exception as e:
             await query.edit_message_text(f"An error occurred: {e}")
+
+    async def handle_kill(self, query, name):
+        process = self.active_processes.get(name)
+        if process and process.poll() is None:
+            try:
+                process.send_signal(signal.CTRL_BREAK_EVENT)
+                process.send_signal(signal.CTRL_BREAK_EVENT)
+                timeout = 8
+                process.wait(timeout=timeout)
+                print(process.poll())
+                print(f"Process '{name}' terminated gracefully.")
+            except subprocess.TimeoutExpired:
+                # If the process doesn't terminate, kill it
+                print(f"Process '{name}' did not terminate within {timeout} seconds. Killing it...")
+                process.kill()
+                process.wait()  # Ensure the process has stopped
+                print(f"Process '{name}' has been killed.")
+            finally:
+                # Remove the process from the active processes dictionary
+                self.active_processes.pop(name, None)
+            self.active_processes.pop(name, None)
+            await query.edit_message_text(f"Recording for {name} has been stopped.")
+        else:
+            await query.edit_message_text(f"No active recording found for {name}.")
 
     async def check_status(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
@@ -146,14 +175,13 @@ class TelegramBot:
             await update.message.reply_text("No active recordings.")
             return
 
-        status_messages = []
+        buttons = []
         for name, process in self.active_processes.items():
             if process.poll() is None:
-                status_messages.append(f"{name}: Recording in progress.")
-            else:
-                status_messages.append(f"{name}: Recording completed.")
-
-        await update.message.reply_text("\n".join(status_messages))
+                buttons.append([InlineKeyboardButton(f"Stop {name}", callback_data=f"kill|{name}")])
+        reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+        message = "Active recordings:" if buttons else "No active recordings."
+        await update.message.reply_text(message, reply_markup=reply_markup)
 
     def run(self):
         self.application.run_polling()
