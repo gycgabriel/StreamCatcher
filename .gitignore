@@ -1,5 +1,7 @@
-bin
-config
-telegram
+__pycache__/
+*.py[cod]
+bin/
+config/
+telegram/
 *.mp4
 *.mp4.part

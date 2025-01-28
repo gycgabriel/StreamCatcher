@@ -9,20 +9,25 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 
+from AccountHandler import AccountHandler
+
 
 class TelegramBot:
     SESSION_TIMEOUT = 3600  # Session timeout in seconds (1 hour)
 
-    def __init__(self, auth_file, links_file, password_file, whitelist_file):
+    def __init__(self, auth_file, links_file, password_file):
         # Load token and links from JSON files
         with open(auth_file, 'r') as f:
-            self.token = json.load(f)["TOKEN"]
+            auth_file_obj = json.load(f)
+            self.token = auth_file_obj["BOT_TOKEN"]
+            self.allowed_users = auth_file_obj["ALLOWED_USERNAMES"]
         with open(links_file, 'r') as f:
-            self.links = json.load(f)
+            link_file_obj = json.load(f)
+            self.links = link_file_obj["LINK_MAP"]
+            self.target_script_path = os.path.join(os.path.dirname(__file__), link_file_obj["TARGET_SCRIPT_PATH"])
+            self.target_script_dir = os.path.dirname(self.target_script_path)
 
         self.password_file = password_file
-        self.whitelist_file = whitelist_file
-        self.whitelist = self.load_whitelist()
 
         self.authenticated_users = {}  # Store authenticated users with timestamps
         self.pending_auth = {}  # Store pending authentication states
@@ -41,13 +46,8 @@ class TelegramBot:
             with open(self.password_file, 'w') as f:
                 f.write(hashed_password)
 
-    def load_whitelist(self):
-        if os.path.exists(self.whitelist_file):
-            with open(self.whitelist_file, 'r') as f:
-                return set(json.load(f))
-        return set()
-
     def add_handlers(self):
+        self.application.add_handler(AccountHandler(self.allowed_users))
         self.application.add_handler(CommandHandler("start", self.handle_start_command))
         self.application.add_handler(CommandHandler("record", self.handle_record_command))
         self.application.add_handler(CommandHandler("status", self.handle_status_command))
@@ -68,17 +68,13 @@ class TelegramBot:
     async def request_authentication(self, update: Update):
         username = update.message.from_user.username
 
-        if username not in self.whitelist:
-            await update.message.reply_text("You are not whitelisted to use this bot.")
-            return False
-
         await update.message.reply_text("Please enter the bot password to proceed.")
         self.pending_auth[username] = True
         return False
 
     async def handle_password(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
-        if username not in self.pending_auth:
+        if username not in self.pending_auth:  # Typed without /start
             return
 
         password = update.message.text
@@ -90,7 +86,7 @@ class TelegramBot:
             self.pending_auth.pop(username, None)
             await update.message.reply_text("Authentication successful! Please retry your command.")
         else:
-            await update.message.reply_text("Invalid password. Try again.")
+            await update.message.reply_text("Invalid password. Please try again:")
 
     async def handle_start_command(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
@@ -156,8 +152,9 @@ class TelegramBot:
             return
 
         try:
-            # Run the command
-            process = subprocess.Popen(["mixtcha.bat", url], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            process = subprocess.Popen([self.target_script_path, url],
+                                       cwd=self.target_script_dir,
+                                       creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             self.active_processes[name] = process
             await query.edit_message_text(f"Recording started for {name}. File will be saved.")
         except Exception as e:
@@ -211,11 +208,9 @@ class TelegramBot:
 
 
 if __name__ == "__main__":
-    # Specify the paths to the auth, links, password, and whitelist JSON files
-    AUTH_FILE = "auth.json"
-    LINKS_FILE = "links.json"
-    PASSWORD_FILE = "password.txt"
-    WHITELIST_FILE = "whitelist.json"
+    AUTH_FILE = "config/auth.json"
+    LINKS_FILE = "config/links.json"
+    PASSWORD_FILE = "config/password.txt"
 
-    bot = TelegramBot(AUTH_FILE, LINKS_FILE, PASSWORD_FILE, WHITELIST_FILE)
+    bot = TelegramBot(AUTH_FILE, LINKS_FILE, PASSWORD_FILE)
     bot.run()
