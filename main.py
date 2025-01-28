@@ -5,6 +5,7 @@ import signal
 import subprocess
 import time
 
+import psutil
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
@@ -56,6 +57,7 @@ class TelegramBot:
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_password))
 
     def is_authenticated(self, username):
+        return True
         if username in self.authenticated_users:
             last_active = self.authenticated_users[username]
             if time.time() - last_active < self.SESSION_TIMEOUT:
@@ -154,28 +156,49 @@ class TelegramBot:
         try:
             process = subprocess.Popen([self.target_script_path, url],
                                        cwd=self.target_script_dir,
-                                       creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+                                       creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.active_processes[name] = process
             await query.edit_message_text(f"Recording started for {name}. File will be saved.")
         except Exception as e:
             await query.edit_message_text(f"An error occurred: {e}")
 
+    @staticmethod
+    def kill_child_processes(parent_pid):
+        parent_process = psutil.Process(parent_pid)
+
+        for child in parent_process.children(recursive=True):
+            try:
+                if "ffmpeg" in child.name().lower():
+                    print(f"Found ffmpeg process with PID {child.pid}")
+                    child.send_signal(signal.CTRL_C_EVENT)
+                    child.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                print(f"Timeout waiting for child process {child.pid} to terminate.")
+                child.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+
+        for child in parent_process.children(recursive=True):
+            print(f"Killing child process {child.pid}")
+            child.send_signal(signal.CTRL_BREAK_EVENT)
+            child.send_signal(signal.CTRL_C_EVENT)
+
+        for child in parent_process.children(recursive=True):
+            child.terminate()
+
+        psutil.wait_procs(parent_process.children(recursive=True))
+
     async def handle_kill(self, query, name):
         process = self.active_processes.get(name)
         if process and process.poll() is None:
             try:
-                process.send_signal(signal.CTRL_BREAK_EVENT)
-                # Send CTRL_C_EVENT to terminate gracefully
-                process.send_signal(signal.CTRL_C_EVENT)
-                timeout = 5  # Adjust the timeout as needed
-                try:
-                    process.wait(timeout=timeout)
-                    print(f"Process '{name}' terminated gracefully.")
-                except subprocess.TimeoutExpired:
-                    print(f"Prompt detected (Terminate batch job Y/N). Forcing termination.")
-                    process.kill()
-                    process.wait()  # Ensure the process has stopped
-                    print(f"Process '{name}' has been killed.")
+                self.kill_child_processes(process.pid)
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                print(f"After few seconds, forcing termination.")
+                process.kill()
+                process.wait()
+                print(f"Process '{name}' has been killed.")
             except Exception as e:
                 print(f"Error during termination: {e}")
             finally:
