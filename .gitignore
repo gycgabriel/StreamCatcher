@@ -1,5 +1,7 @@
 auth.json
 password.txt
+whitelist.json
+links.json
 telegram
 ffmpeg.exe
 ffplay.exe
