@@ -1,13 +1,5 @@
-auth.json
-password.txt
-whitelist.json
-links.json
+bin
+config
 telegram
-ffmpeg.exe
-ffplay.exe
-ffprobe.exe
-mixtcha.bat
-twitcast.bat
-yt-dlp.exe
 *.mp4
 *.mp4.part
