@@ -6,6 +6,7 @@ import subprocess
 import time
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 
 
@@ -28,8 +29,7 @@ class TelegramBot:
 
         self.ensure_password()  # Ensure the password is set
 
-        self.application = Application.builder().token(self.token).read_timeout(10).connect_timeout(
-            10).build()
+        self.application = Application.builder().token(self.token).read_timeout(10).connect_timeout(10).build()
 
         self.active_processes = {}
         self.add_handlers()
@@ -48,10 +48,11 @@ class TelegramBot:
         return set()
 
     def add_handlers(self):
-        self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(CommandHandler("record", self.show_links))
-        self.application.add_handler(CommandHandler("status", self.check_status))
+        self.application.add_handler(CommandHandler("start", self.handle_start_command))
+        self.application.add_handler(CommandHandler("record", self.handle_record_command))
+        self.application.add_handler(CommandHandler("status", self.handle_status_command))
         self.application.add_handler(CallbackQueryHandler(self.handle_callback))
+        # all other text, assume is password
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_password))
 
     def is_authenticated(self, username):
@@ -66,6 +67,7 @@ class TelegramBot:
 
     async def request_authentication(self, update: Update):
         username = update.message.from_user.username
+
         if username not in self.whitelist:
             await update.message.reply_text("You are not whitelisted to use this bot.")
             return False
@@ -90,12 +92,33 @@ class TelegramBot:
         else:
             await update.message.reply_text("Invalid password. Try again.")
 
-    async def start(self, update: Update, context: CallbackContext):
+    async def handle_start_command(self, update: Update, context: CallbackContext):
+        username = update.message.from_user.username
+
+        if self.is_authenticated(username):
+            await update.message.reply_text(
+                f"Welcome back, {username}\\! 👋\n\n"
+                "Available commands:\n"
+                "• /record \\- Choose a stream to record\n"
+                "• /status \\- Check or stop active recordings\n",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        self.pending_auth[username] = True
         await update.message.reply_text(
-            "Welcome! Please authenticate before using the bot's features."
+            "Welcome to StreamCatcher Bot\! 🎥\n\n"
+            "This Telegram bot allows you to remotely record livestreams using *yt\-dlp* and manage your recordings\.  "
+            "To get started, you need to authenticate using the bot's password\.\n\n"
+            "*How to Use the Bot:*\n"
+            "1\. Authenticate with the bot password\.\n"
+            "2\. Use /record to choose a stream to record\.\n"
+            "3\. Use /status to check or stop active recordings\.\n\n"
+            "*Please enter the bot password to proceed\.*",
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    async def show_links(self, update: Update, context: CallbackContext):
+    async def handle_record_command(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
 
         if not self.is_authenticated(username):
@@ -145,26 +168,26 @@ class TelegramBot:
         if process and process.poll() is None:
             try:
                 process.send_signal(signal.CTRL_BREAK_EVENT)
-                process.send_signal(signal.CTRL_BREAK_EVENT)
-                timeout = 8
-                process.wait(timeout=timeout)
-                print(process.poll())
-                print(f"Process '{name}' terminated gracefully.")
-            except subprocess.TimeoutExpired:
-                # If the process doesn't terminate, kill it
-                print(f"Process '{name}' did not terminate within {timeout} seconds. Killing it...")
-                process.kill()
-                process.wait()  # Ensure the process has stopped
-                print(f"Process '{name}' has been killed.")
+                # Send CTRL_C_EVENT to terminate gracefully
+                process.send_signal(signal.CTRL_C_EVENT)
+                timeout = 5  # Adjust the timeout as needed
+                try:
+                    process.wait(timeout=timeout)
+                    print(f"Process '{name}' terminated gracefully.")
+                except subprocess.TimeoutExpired:
+                    print(f"Prompt detected (Terminate batch job Y/N). Forcing termination.")
+                    process.kill()
+                    process.wait()  # Ensure the process has stopped
+                    print(f"Process '{name}' has been killed.")
+            except Exception as e:
+                print(f"Error during termination: {e}")
             finally:
-                # Remove the process from the active processes dictionary
                 self.active_processes.pop(name, None)
-            self.active_processes.pop(name, None)
             await query.edit_message_text(f"Recording for {name} has been stopped.")
         else:
             await query.edit_message_text(f"No active recording found for {name}.")
 
-    async def check_status(self, update: Update, context: CallbackContext):
+    async def handle_status_command(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
 
         if not self.is_authenticated(username):
