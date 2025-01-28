@@ -6,7 +6,7 @@ import subprocess
 import time
 
 import psutil
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 
@@ -52,6 +52,7 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("start", self.handle_start_command))
         self.application.add_handler(CommandHandler("record", self.handle_record_command))
         self.application.add_handler(CommandHandler("status", self.handle_status_command))
+        self.application.add_handler(CommandHandler("stop", self.handle_status_command))
         self.application.add_handler(CallbackQueryHandler(self.handle_callback))
         # all other text, assume is password
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_password))
@@ -93,13 +94,18 @@ class TelegramBot:
     async def handle_start_command(self, update: Update, context: CallbackContext):
         username = update.message.from_user.username
 
+        buttons = [[KeyboardButton("/start")], [KeyboardButton("/record")], [KeyboardButton("/status")], [KeyboardButton("/stop")]]
+
         if self.is_authenticated(username):
             await update.message.reply_text(
                 f"Welcome back, {username}\\! 👋\n\n"
                 "Available commands:\n"
+                "• /start \\- Show this message\n"
                 "• /record \\- Choose a stream to record\n"
                 "• /status \\- Check or stop active recordings\n",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "• /stop \\- Check or stop active recordings\n",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_markup=ReplyKeyboardMarkup(buttons)
             )
             return
 
