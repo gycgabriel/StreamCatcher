@@ -1,4 +1,1 @@
-pytz~=2022.2.1
 python-telegram-bot~=21.10
-pyperclip~=1.8.2
-mss~=6.1.0
