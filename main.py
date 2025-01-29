@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import signal
 import subprocess
 import time
@@ -162,6 +163,11 @@ class TelegramBot:
         try:
             process = subprocess.Popen([self.target_script_path, url],
                                        cwd=self.target_script_dir,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       text=True,
+                                       encoding='utf-8',
+                                       errors='ignore',
                                        creationflags=subprocess.CREATE_NEW_CONSOLE)
             self.active_processes[name] = process
             await query.edit_message_text(f"Recording started for {name}. File will be saved.")
@@ -225,11 +231,38 @@ class TelegramBot:
             return
 
         buttons = []
+        active_processes_info = []
+        ## Note: yt-dlp calls ffmpeg
+        # ffmpeg output captured in stderr (actual recording details)
+        # yt-dlp output captured in stdout (the starting media info)
         for name, process in self.active_processes.items():
             if process.poll() is None:
+                # Capture the output and search for the 'time=' field to get the duration
+                duration = None
+                match = False
+                while not match:
+                    line = process.stderr.readline()
+                    print(line)
+                    if not line:
+                        continue
+
+                    match = re.search(r"time=(\d+:\d{2}:\d{2})", line)
+                    if match:
+                        duration = match.group(1)  # Extracted duration
+                        print(f"Duration: {duration}")
+
+                process_info = f"Recording {name} - Duration: {duration}" if duration else f"Recording {name} - Duration info unavailable"
+                active_processes_info.append(process_info)
+
                 buttons.append([InlineKeyboardButton(f"Stop {name}", callback_data=f"kill|{name}")])
+
+        if active_processes_info:
+            message = "Active recordings:\n" + "\n".join(active_processes_info)
+        else:
+            message = "No active recordings."
+
         reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
-        message = "Active recordings:" if buttons else "No active recordings."
+
         await update.message.reply_text(message, reply_markup=reply_markup)
 
     def run(self):
