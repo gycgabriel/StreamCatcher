@@ -18,11 +18,11 @@ class TelegramBot:
 
     def __init__(self, auth_file, links_file, password_file):
         # Load token and links from JSON files
-        with open(auth_file, 'r') as f:
+        with open(os.path.join(os.path.dirname(__file__), auth_file), 'r') as f:
             auth_file_obj = json.load(f)
             self.token = auth_file_obj["BOT_TOKEN"]
             self.allowed_users = auth_file_obj["ALLOWED_USERNAMES"]
-        with open(links_file, 'r') as f:
+        with open(os.path.join(os.path.dirname(__file__), links_file), 'r') as f:
             link_file_obj = json.load(f)
             self.links = link_file_obj["LINK_MAP"]
             self.target_script_path = os.path.join(os.path.dirname(__file__), link_file_obj["TARGET_SCRIPT_PATH"])
@@ -44,7 +44,7 @@ class TelegramBot:
         if not os.path.exists(self.password_file):
             password = input("Set a password for the bot: ")
             hashed_password = hashlib.sha256(password.encode()).hexdigest()
-            with open(self.password_file, 'w') as f:
+            with open(os.path.join(os.path.dirname(__file__), self.password_file), 'w') as f:
                 f.write(hashed_password)
 
     def add_handlers(self):
@@ -102,10 +102,10 @@ class TelegramBot:
                 "Available commands:\n"
                 "• /start \\- Show this message\n"
                 "• /record \\- Choose a stream to record\n"
-                "• /status \\- Check or stop active recordings\n",
+                "• /status \\- Check or stop active recordings\n"
                 "• /stop \\- Check or stop active recordings\n",
+                reply_markup=ReplyKeyboardMarkup(buttons),
                 parse_mode=ParseMode.MARKDOWN_V2,
-                reply_markup=ReplyKeyboardMarkup(buttons)
             )
             return
 
