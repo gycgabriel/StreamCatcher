@@ -8,10 +8,10 @@
 ### How to Use:
 
 1. **Download yt-dlp**:
-   - Visit the official [[yt-dlp GitHub](https://github.com/yt-dlp/yt-dlp)](https://github.com/yt-dlp/yt-dlp) page to download the latest **yt-dlp** executable for your platform.
+   - Visit the official yt-dlp GitHub https://github.com/yt-dlp/yt-dlp page to download the latest **yt-dlp** executable for your platform.
 
 2. **Download FFmpeg**:
-   - Download the latest FFmpeg build from the official [[FFmpeg website](https://ffmpeg.org/download.html)](https://ffmpeg.org/download.html). Make sure to get the executable version suitable for your operating system.
+   - Download the latest FFmpeg build from the official FFmpeg website https://ffmpeg.org/download.html. Make sure to get the executable version suitable for your operating system.
 
 3. **Place Executables in the `bin` Directory**:
    - Place both **yt-dlp.exe** and **ffmpeg.exe** into a folder named `bin` on your computer.
@@ -33,7 +33,7 @@
    
 5. **Find Your Telegram Chat ID**:
    - Start a conversation with your bot on Telegram and send any message to it.
-   - Visit [[this link](https://api.telegram.org/bot%3Cyour-bot-token%3E/getUpdates)](https://api.telegram.org/bot<your-bot-token>/getUpdates) (replacing `<your-bot-token>` with your actual bot token) to retrieve your **chat ID** from the response.
+   - Visit [[this link](https://api.telegram.org/bot%3Cyour-bot-token%3E/getUpdates)](`https://api.telegram.org/bot<your-bot-token>/getUpdates`) (replacing `<your-bot-token>` with your actual bot token) to retrieve your **chat ID** from the response.
    - Input your **chat ID** into the `auth.json` file.
 
 6. **Set Up Configuration Files**:
