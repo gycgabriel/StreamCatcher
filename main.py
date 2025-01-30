@@ -11,7 +11,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKe
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 
-from AccountHandler import AccountHandler
+from handlers import AccountHandler
 
 
 class TelegramBot:
@@ -22,6 +22,7 @@ class TelegramBot:
         with open(os.path.join(os.path.dirname(__file__), auth_file), 'r') as f:
             auth_file_obj = json.load(f)
             self.token = auth_file_obj["BOT_TOKEN"]
+            self.admin_chat_id = auth_file_obj["CHAT_ID"]
             self.allowed_users = auth_file_obj["ALLOWED_USERNAMES"]
         with open(os.path.join(os.path.dirname(__file__), links_file), 'r') as f:
             link_file_obj = json.load(f)
@@ -36,10 +37,15 @@ class TelegramBot:
 
         self.ensure_password()  # Ensure the password is set
 
-        self.application = Application.builder().token(self.token).read_timeout(10).connect_timeout(10).build()
+        self.application = Application.builder().token(self.token)\
+            .read_timeout(10).connect_timeout(10).post_init(self.send_init_message).build()
 
         self.active_processes = {}
         self.add_handlers()
+
+    async def send_init_message(self, application):
+        print("[*] Bot is running")
+        await application.bot.send_message(chat_id=self.admin_chat_id, text="─=≡Σ((( つ•̀ω•́)つ [Online]")
 
     def ensure_password(self):
         if not os.path.exists(self.password_file):
@@ -266,6 +272,7 @@ class TelegramBot:
         await update.message.reply_text(message, reply_markup=reply_markup)
 
     def run(self):
+        print("[*] Bot is starting")
         self.application.run_polling()
 
 
