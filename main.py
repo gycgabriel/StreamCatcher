@@ -12,6 +12,7 @@ from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 
 from handlers import AccountHandler
+from utils import resolve_path
 
 
 class TelegramBot:
@@ -19,15 +20,15 @@ class TelegramBot:
 
     def __init__(self, auth_file, links_file, password_file):
         # Load token and links from JSON files
-        with open(os.path.join(os.path.dirname(__file__), auth_file), 'r') as f:
+        with open(auth_file, 'r') as f:
             auth_file_obj = json.load(f)
             self.token = auth_file_obj["BOT_TOKEN"]
             self.admin_chat_id = auth_file_obj["CHAT_ID"]
             self.allowed_users = auth_file_obj["ALLOWED_USERNAMES"]
-        with open(os.path.join(os.path.dirname(__file__), links_file), 'r') as f:
+        with open(links_file, 'r') as f:
             link_file_obj = json.load(f)
             self.links = link_file_obj["LINK_MAP"]
-            self.target_script_path = os.path.join(os.path.dirname(__file__), link_file_obj["TARGET_SCRIPT_PATH"])
+            self.target_script_path = resolve_path(link_file_obj["TARGET_SCRIPT_PATH"])
             self.target_script_dir = os.path.dirname(self.target_script_path)
 
         self.password_file = password_file
@@ -38,7 +39,11 @@ class TelegramBot:
         self.ensure_password()  # Ensure the password is set
 
         self.application = Application.builder().token(self.token)\
-            .read_timeout(10).connect_timeout(10).post_init(self.send_init_message).build()
+            .read_timeout(10).connect_timeout(10)\
+            .post_init(self.send_init_message)\
+            .post_stop(self.on_stop)\
+            .post_shutdown(self.on_shutdown)\
+            .build()
 
         self.active_processes = {}
         self.add_handlers()
@@ -47,11 +52,23 @@ class TelegramBot:
         print("[*] Bot is running")
         await application.bot.send_message(chat_id=self.admin_chat_id, text="─=≡Σ((( つ•̀ω•́)つ [Online]")
 
+    async def on_stop(self, application):
+        print("[*] Bot is stopping")
+        await application.bot.send_message(chat_id=self.admin_chat_id, text="(_  _) ᶻ 𝗓 𐰁 [Stopping]")
+
+    async def on_shutdown(self, application):
+        print("[*] Bot is shutting down")
+        for name, process in self.active_processes.items():
+            if process.poll() is None:
+                print(f"Terminating process '{name}'")
+                process.kill()
+                process.wait()
+
     def ensure_password(self):
         if not os.path.exists(self.password_file):
             password = input("Set a password for the bot: ")
             hashed_password = hashlib.sha256(password.encode()).hexdigest()
-            with open(os.path.join(os.path.dirname(__file__), self.password_file), 'w') as f:
+            with open(self.password_file, 'w') as f:
                 f.write(hashed_password)
 
     def add_handlers(self):
@@ -277,9 +294,9 @@ class TelegramBot:
 
 
 if __name__ == "__main__":
-    AUTH_FILE = "config/auth.json"
-    LINKS_FILE = "config/links.json"
-    PASSWORD_FILE = "config/password.txt"
+    AUTH_FILE = resolve_path("config/auth.json")
+    LINKS_FILE = resolve_path("config/links.json")
+    PASSWORD_FILE = resolve_path("config/password.txt")
 
     bot = TelegramBot(AUTH_FILE, LINKS_FILE, PASSWORD_FILE)
     bot.run()

@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 from telegram import Update, User, Message, Chat
 from telegram.ext import CallbackContext
-from AccountHandler import AccountHandler
+from handlers import AccountHandler
 import pytest
 
 @pytest.mark.asyncio
