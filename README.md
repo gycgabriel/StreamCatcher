@@ -1,103 +1,81 @@
 # StreamCatcher bot
-## Telegram bot to record your livestreams remotely using yt-dlp
 
-This Telegram bot allows you to authenticate, record streams using `yt-dlp`, and check the status of your recordings. Below is a guide on how to use the bot.
-
----
-
-## Table of Contents
-1. [Getting Started](#getting-started)
-2. [Authentication](#authentication)
-3. [Available Commands](#available-commands)
-4. [Stream Recording](#stream-recording)
-5. [Check Status](#check-status)
-6. [Security](#security)
+### Trigger livestream downloads on the go with a Telegram bot!
 
 ---
 
-## Getting Started
 
-1. **Set Up the Bot**  
-   Ensure that the bot has been properly set up with the necessary files:
-   - `auth.json` (contains the bot’s token)
-   - `links.json` (contains the links to streams)
-   - `password.txt` (stores a password for user authentication)
-   - `whitelist.json` (contains the list of authorized users)
+### How to Use:
+
+1. **Download yt-dlp**:
+   - Visit the official [[yt-dlp GitHub](https://github.com/yt-dlp/yt-dlp)](https://github.com/yt-dlp/yt-dlp) page to download the latest **yt-dlp** executable for your platform.
+
+2. **Download FFmpeg**:
+   - Download the latest FFmpeg build from the official [[FFmpeg website](https://ffmpeg.org/download.html)](https://ffmpeg.org/download.html). Make sure to get the executable version suitable for your operating system.
+
+3. **Place Executables in the `bin` Directory**:
+   - Place both **yt-dlp.exe** and **ffmpeg.exe** into a folder named `bin` on your computer.
+   - Also, place a **.bat** file inside the `bin` directory to make it easier to run the program from the command line.
+
+   Your `bin` directory should look like this:
+   ```
+   bin/
+   ├── yt-dlp.exe
+   ├── ffmpeg.exe
+   └── run_download.bat  (this is the .bat file to run yt-dlp)
+   ```
+
+4. **Set Up Telegram Bot**:
+   - Create a new bot on Telegram via **BotFather**:
+     1. Open Telegram and search for "BotFather."
+     2. Start a conversation and use `/newbot` to create a new bot. Follow the prompts to get the **bot token**.
+   - Input the **bot token** into the `auth.json` file.
    
-2. **Start the Bot**  
-   After setting up the bot, run it by executing the script. The bot will connect to Telegram and be ready to handle commands.
+5. **Find Your Telegram Chat ID**:
+   - Start a conversation with your bot on Telegram and send any message to it.
+   - Visit [[this link](https://api.telegram.org/bot%3Cyour-bot-token%3E/getUpdates)](https://api.telegram.org/bot<your-bot-token>/getUpdates) (replacing `<your-bot-token>` with your actual bot token) to retrieve your **chat ID** from the response.
+   - Input your **chat ID** into the `auth.json` file.
+
+6. **Set Up Configuration Files**:
+   - **auth.json**: This file contains your bot’s **token** and **chat_id**.
+   - **links.json**: This file contains the path to the **run_download.bat** file and a list of predetermined URLs you want to download.
+
+   Your `config` directory should look like this:
+   ```
+   config/
+   ├── auth.json         (contains bot token and chat ID)
+   └── links.json        (contains file path to run_download.bat and a list of predetermined URLs to download)
+   ```
+
+### Running the Program:
+1. Once everything is set up, double-click the **main.exe** file from the `root` directory, or run it from the command line.
+2. Pick the link from **links.json** to record from within the Telegram chat.
+3. The bot will run your custom bat file with the link as argument, i.e. `run_download.bat <link>` on your pc that runs the Telegram bot, and you can check the status of the downloads via your Telegram bot.
+
+### Example of File Contents:
+- **auth.json**:
+   ```json
+   {
+     "BOT_TOKEN": "YOUR_BOT_TOKEN_HERE",
+     "CHAT_ID": "YOUR_CHAT_ID_HERE",
+    "ALLOWED_USERNAMES": ["YOUR_TELEGRAM_USERNAME(S)_HERE"]
+   }
+   ```
+
+- **links.json**:
+   ```json
+   "TARGET_SCRIPT_PATH": "./bin/PATH_TO_YOUR_BAT_FILE",
+   "LINK_MAP": {
+    "livestream A": "YOUR_LIVESTREAM_URL",
+    "livestream B": "YOUR_LIVESTREAM_URL",
+   }
+   ```
+
+### Additional Notes:
+- The **.exe** file is the main entry point for running the download process. You can run it manually, or automate it with a scheduled task if preferred.
 
 ---
 
-## Authentication
+Dev Notes:
 
-Before using any commands, you need to authenticate yourself.
-
-1. **Whitelisted Users**  
-   Only users listed in `whitelist.json` are allowed to interact with the bot. If you're not whitelisted, the bot will notify you that you're not authorized.
-
-2. **Password Authentication**  
-   After starting the bot, it will ask for the password (set in `password.txt`). Enter the correct password to authenticate. If the password is incorrect, you will be prompted to try again.
-
----
-
-## Available Commands
-
-1. **/start**  
-   Displays a welcome message and prompts the user to authenticate.
-
-2. **/record**  
-   Once authenticated, this command allows the user to select a stream to record. It will show a list of available links (from `links.json`) as buttons.
-
-3. **/status**  
-   Shows the status of any active recordings. If no recordings are active, the bot will inform you that there are no ongoing recordings.
-
----
-
-## Stream Recording
-
-1. **Selecting a Stream to Record**  
-   When you send the `/record` command, the bot will provide a list of available streams. Select a stream by clicking one of the buttons.
-
-2. **Recording Process**  
-   After selecting a stream, the bot will use `yt-dlp` to start the recording. The file will be saved with the format: `stream_name-timestamp.ext`.
-
-3. **Stopping the Recording**  
-   Once a recording is complete, it will be automatically removed from the active recording list.
-
----
-
-## Check Status
-
-Use the `/status` command to check the status of your ongoing recordings.
-
-- If a recording is still in progress, it will show as "Recording in progress."
-- If a recording has been completed, it will show as "Recording completed."
-
----
-
-## Security
-
-1. **Password Protection**  
-   The bot requires a password to authenticate users. This password is hashed and stored securely in `password.txt`. Always ensure this file is kept secure.
-
-2. **Whitelisted Users**  
-   Only users in the `whitelist.json` file are allowed to access the bot's features. This file must be updated by an administrator if new users need access.
-
----
-
-## Troubleshooting
-
-- **"I am not whitelisted!"**  
-  If you are not listed in `whitelist.json`, you will not be able to use the bot. Please contact the administrator to be added.
-
-- **"Incorrect Password"**  
-  If you forget the password, you'll need the administrator to reset it in `password.txt`.
-
----
-
-## License
-
-This bot is open-source and can be freely modified. Please ensure you have permission to use it in accordance with any relevant laws.
-
----
+IMPORTANT: `pyinstaller main.py --paths "." --noconfirm` to create the executable
