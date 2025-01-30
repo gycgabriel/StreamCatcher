@@ -1,2 +1,2 @@
-python-telegram-bot~=21.10
-psutil
+python-telegram-bot==21.10
+psutil==6.1.1
