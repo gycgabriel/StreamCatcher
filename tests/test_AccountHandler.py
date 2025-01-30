@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from telegram import Update, User, Message, Chat
 from telegram.ext import CallbackContext
-from AccountHandler import AccountHandler  # Replace 'your_module' with the actual module name
+from AccountHandler import AccountHandler
+import pytest
 
 @pytest.mark.asyncio
 async def test_callback():
